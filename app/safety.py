@@ -8,6 +8,15 @@ from typing import Any
 
 
 WINDOWS_FORBIDDEN = set('<>:"\\|?*')
+WINDOWS_RESERVED_NAMES = {
+    "CON",
+    "PRN",
+    "AUX",
+    "NUL",
+    *(f"COM{index}" for index in range(1, 10)),
+    *(f"LPT{index}" for index in range(1, 10)),
+}
+APP_RESERVED_DIRS = {".light_ai_logs"}
 
 
 class FileOperationExecutor:
@@ -107,6 +116,14 @@ class FileOperationExecutor:
         for part in path.parts:
             if part in ("", ".", "..") or any(char in WINDOWS_FORBIDDEN for char in part):
                 raise ValueError(f"Windowsで危険な名前を拒否しました: {value}")
+            if part.lower() in APP_RESERVED_DIRS:
+                raise ValueError(f"アプリ内部フォルダへの操作を拒否しました: {value}")
+            if part.endswith(" ") or part.endswith("."):
+                raise ValueError(f"Windowsで危険な末尾の名前を拒否しました: {value}")
+            if any(ord(char) < 32 for char in part):
+                raise ValueError(f"制御文字を含む名前を拒否しました: {value}")
+            if part.split(".")[0].upper() in WINDOWS_RESERVED_NAMES:
+                raise ValueError(f"Windows予約名を拒否しました: {value}")
         return value
 
     def _safe_source(self, relative: str) -> Path:

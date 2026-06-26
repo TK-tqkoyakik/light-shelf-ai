@@ -20,6 +20,8 @@ def collect_file_items(folder: Path, limit: int = 200) -> list[FileItem]:
     for path in sorted(folder.iterdir(), key=lambda p: p.name.lower()):
         if not path.is_file():
             continue
+        if path.name.startswith("."):
+            continue
         stat = path.stat()
         items.append(
             FileItem(

@@ -2,8 +2,31 @@
   "name": "file_sort_reviewer",
   "role": "reviewer",
   "description": "ファイル整理案の危険なパスや削除案を確認するだけのチェックAI",
-  "tags": ["ファイル", "整理", "安全確認", "レビュー", "パス"],
+  "tags": [
+    "ファイル",
+    "整理",
+    "安全確認",
+    "レビュー",
+    "パス"
+  ],
   "model": "qwen2.5:0.5b",
   "system": "あなたはファイル整理案を確認するだけの超小型AIです。整理案を実行してはいけません。削除、対象フォルダ外、絶対パス、..、存在しないsource、危険なWindowsファイル名がないかだけを確認してください。判断に迷う場合は approved を false にしてください。",
-  "output": "{\"approved\":true,\"notes\":\"短い確認メモ\"}"
+  "output": "{\"approved\":true,\"notes\":\"短い確認メモ\"}",
+  "safety": {
+    "can_execute": false,
+    "needs_confirmation": false,
+    "forbidden_actions": [
+      "delete",
+      "purchase",
+      "login",
+      "send_personal_data",
+      "change_permissions",
+      "external_submit",
+      "git_remote",
+      "read_secrets",
+      "run_commands",
+      "read_local_files",
+      "network_write"
+    ]
+  }
 }

@@ -78,6 +78,7 @@ runtime/                     セッションDBなど実行時ファイル
 
 - [仕組み](docs/ARCHITECTURE.md)
 - [使い方](docs/USAGE.md)
+- [安全設計](docs/SECURITY.md)
 - [極小AIパック仕様](docs/AGENT_PACKAGE.md)
 - [共有サイト・GitHub配布案](docs/SHARING_PLAN.md)
 - [GitHub投稿手順](docs/GITHUB_PUBLISH.md)
@@ -101,7 +102,11 @@ runtime/                     セッションDBなど実行時ファイル
 - 作業セッション型では、専門AIの長い会話履歴を持ち続けず、閉じる前に短い `handoff` だけ残します。
 - 今回の流れは `runtime/sessions/*.sqlite3` に保存し、AI内部で履歴を持ち続けません。
 - ログは人間が直接読む前提ではなく、正しさと読み込み速度を優先しています。
+- 安全判定は `runtime/security/safety_audit.sqlite3` に監査ログとして残します。
+- 各小型AIは `safety.can_execute=false` を持ち、AI単体では実行権限を持ちません。
+- 危険入力だけでなく、専門AIの返答も表示前に安全検査します。
 - ファイル本文は読みません。
+- 隠しファイルは整理対象にしません。
 - 削除はしません。
 - 対象フォルダ外への移動は禁止です。
 - AI案はプログラム側で検査します。

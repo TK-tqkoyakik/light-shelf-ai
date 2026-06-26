@@ -2,8 +2,33 @@
   "name": "vscode_operator",
   "role": "specialist_chat",
   "description": "VSCode、コード編集、実装、デバッグ、設定、コマンド案だけを担当する専門AI",
-  "tags": ["vscode", "コード", "実装", "デバッグ", "設定", "コマンド", "編集"],
+  "tags": [
+    "vscode",
+    "コード",
+    "実装",
+    "デバッグ",
+    "設定",
+    "コマンド",
+    "編集"
+  ],
   "model": "qwen2.5:0.5b",
   "system": "あなたはVSCodeとコード作業だけを担当する専門AIです。実装、ファイル構成、コマンド、デバッグ、設定の相談だけに答えます。実際のVSCode操作はまだ直接行わず、編集方針やコマンド案を短く返してください。handoffがあれば必ず引き継いでください。",
-  "output": "短い専門チャット返答"
+  "output": "短い専門チャット返答",
+  "safety": {
+    "can_execute": false,
+    "needs_confirmation": true,
+    "forbidden_actions": [
+      "delete",
+      "purchase",
+      "login",
+      "send_personal_data",
+      "change_permissions",
+      "external_submit",
+      "git_remote",
+      "read_secrets",
+      "run_commands",
+      "read_local_files",
+      "network_write"
+    ]
+  }
 }

@@ -7,6 +7,7 @@ from typing import Any
 
 from .ollama_client import OllamaClient
 from .performance import get_active_profile
+from .safety_policy import DEFAULT_FORBIDDEN_ACTIONS, AgentPermissionGate
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -32,15 +33,18 @@ class MicroAgentRunner:
         self.client = client or OllamaClient()
         self.agent_dir = agent_dir
         self.profile = get_active_profile()
+        self.permission_gate = AgentPermissionGate()
 
     def run_json(self, agent_name: str, user_payload: dict) -> dict:
         agent = self.load(agent_name)
+        self._ensure_agent_definition_safe(agent)
         prompt = self._build_prompt(agent, user_payload)
         raw = self.client.generate(model=self._select_model(agent), prompt=prompt, keep_alive=self.profile.keep_alive)
         return self._parse_json(raw)
 
     def run_text(self, agent_name: str, user_payload: dict) -> str:
         agent = self.load(agent_name)
+        self._ensure_agent_definition_safe(agent)
         prompt = self._build_prompt(agent, user_payload)
         return self.client.generate(model=self._select_model(agent), prompt=prompt, keep_alive=self.profile.keep_alive).strip()
 
@@ -64,8 +68,8 @@ class MicroAgentRunner:
         role = str(data.get("role", ""))
         return {
             "can_execute": False,
-            "needs_confirmation": role in ("reviewer", "specialist_chat"),
-            "forbidden_actions": ["delete", "purchase", "login", "send_personal_data", "change_permissions"],
+            "needs_confirmation": role in ("specialist_chat",),
+            "forbidden_actions": list(DEFAULT_FORBIDDEN_ACTIONS),
         }
 
     def list_agents(self, role: str | None = None) -> list[MicroAgent]:
@@ -105,6 +109,11 @@ class MicroAgentRunner:
 入力:
 {payload}
 """.strip()
+
+    def _ensure_agent_definition_safe(self, agent: MicroAgent) -> None:
+        decision = self.permission_gate.review_agent_definition(agent.name, agent.safety)
+        if not decision.allowed:
+            raise ValueError(decision.reason)
 
     def _parse_json(self, raw: str) -> dict:
         text = raw.strip()

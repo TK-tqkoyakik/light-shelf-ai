@@ -7,10 +7,12 @@ from tkinter import font as tkfont
 from pathlib import Path
 from tkinter import filedialog, messagebox, scrolledtext
 
+from .audit_log import SafetyAuditLog
 from .file_ai import FileOrganizerAI, format_plan_for_display
 from .micro_ai import MicroAgentRunner
 from .router import TaskRouter
 from .safety import FileOperationExecutor
+from .safety_policy import ActionSafetyPolicy, AgentPermissionGate, SafetyDecision
 from .session_manager import WorkSession, WorkSessionManager
 from .session_store import SessionStore
 
@@ -43,6 +45,8 @@ class MiniTaskAIApp:
         self.normal_geometry = "720x680"
         self.ai = FileOrganizerAI()
         self.router = TaskRouter()
+        self.safety_policy = ActionSafetyPolicy()
+        self.audit_log = SafetyAuditLog()
         self.session_manager = WorkSessionManager()
         self.work_session: WorkSession | None = None
         self.executor: FileOperationExecutor | None = None
@@ -244,6 +248,10 @@ class MiniTaskAIApp:
             threading.Thread(target=self._session_worker, args=(text,), daemon=True).start()
             return
 
+        safety = self._review_ui_input(text)
+        if safety is None:
+            return
+
         route = self.router.route(text)
         if route is None:
             self._write("AI", f"今の棚に合う小型AIがありません。{self.router.describe_available_tasks()}。")
@@ -259,6 +267,10 @@ class MiniTaskAIApp:
             self._write("AI", f"「{route.label}」は見つけましたが、このアプリではまだ実行器が未実装です。")
             return
 
+        if self._file_request_needs_safety_stop(safety):
+            self._write("safety", "v1のファイル整理AIは削除とファイル本文読み取りをしません。ファイル名・拡張子・サイズ・更新日時だけで、移動/リネーム案を作る依頼にしてください。")
+            return
+
         if self.selected_folder is None or self.executor is None:
             self._write("AI", "先に「フォルダ選択」で整理したいフォルダを選んでください。")
             return
@@ -267,6 +279,21 @@ class MiniTaskAIApp:
         self.status_var.set(f"{route.label} 実行中")
         self._write("司令塔", f"{route.reason}、「{route.label}」を選択。呼び出す小型AI: {' → '.join(route.pipeline)}")
         threading.Thread(target=self._make_plan_worker, args=(self.selected_folder, route.pipeline), daemon=True).start()
+
+    def _review_ui_input(self, text: str) -> SafetyDecision | None:
+        safety = self.safety_policy.review_text(text)
+        try:
+            self.audit_log.record(scope="ui_user_input", decision=safety, text=text)
+        except Exception as exc:
+            self._write("safety", f"安全監査ログに書き込めないため処理を停止しました。\n{exc}")
+            return None
+        if not safety.allowed:
+            self._write("safety", f"{safety.reason}\nrisks: {', '.join(safety.risks)}")
+            return None
+        return safety
+
+    def _file_request_needs_safety_stop(self, safety: SafetyDecision) -> bool:
+        return bool({"delete", "local_file_read"} & set(safety.risks))
 
     def _session_worker(self, text: str) -> None:
         try:
@@ -412,6 +439,10 @@ class LoadingScreen:
         agents = MicroAgentRunner().list_agents()
         if not agents:
             raise RuntimeError("agents/*.json が見つかりません。")
+        gate = AgentPermissionGate()
+        unsafe = [agent.name for agent in agents if not gate.review_agent_definition(agent.name, agent.safety).allowed]
+        if unsafe:
+            raise RuntimeError(f"直接実行権限を持つAI定義を拒否しました: {', '.join(unsafe)}")
         return f"{len(agents)}個のAIを確認"
 
     def _check_task_defs(self) -> str:
@@ -427,8 +458,16 @@ class LoadingScreen:
 
 
 def run_startup_self_check() -> None:
+    def checked_agents() -> list:
+        agents = MicroAgentRunner().list_agents()
+        gate = AgentPermissionGate()
+        unsafe = [agent.name for agent in agents if not gate.review_agent_definition(agent.name, agent.safety).allowed]
+        if unsafe:
+            raise RuntimeError(f"unsafe agent definitions: {', '.join(unsafe)}")
+        return agents
+
     checks: list[tuple[str, callable]] = [
-        ("agents", lambda: MicroAgentRunner().list_agents()),
+        ("agents", checked_agents),
         ("tasks", lambda: TaskRouter().tasks),
         ("session_store", lambda: SessionStore().session_dir.mkdir(exist_ok=True)),
     ]

@@ -32,6 +32,7 @@ handoff_summarizer が要点だけ残す
 - `app/session_store.py`: 今回の流れを `runtime/sessions/*.sqlite3` に保存する。
 - `app/micro_ai.py`: 保存済みAIをOllamaで1回だけ呼び、`keep_alive: 0` で閉じる。
 - `app/safety_policy.py`: 危険な要求を止め、安全レビューが必要な要求を検出する。
+- `app/audit_log.py`: 安全判定を `runtime/security/safety_audit.sqlite3` に高速保存する。
 
 `micro_ai_shelf/default/agents/*.json` には `description` と `tags` を書きます。  
 司令塔はコードにAI名を固定せず、ファイルの中からタグ検索して候補を作り、その中から必要なAIを選びます。
@@ -54,6 +55,8 @@ handoff_summarizer が要点だけ残す
 - セッションの流れはファイルに追記し、AI内部のメモリには保持しない。
 - ログは人間の読みやすさより、SQLiteで正しさと読み込み速度を優先する。
 - 削除、購入、ログイン、個人情報送信、権限変更、GitHub push などは安全レビュー対象にする。
+- 各AI定義には `safety.can_execute=false` を明示し、専門AIが直接実行できない前提を固定する。
+- 専門AIの返答も表示前に安全検査し、実行済みを装う返答や危険内容を止める。
 
 ## AIを増やす方法
 

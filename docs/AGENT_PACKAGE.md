@@ -16,10 +16,25 @@
   "safety": {
     "can_execute": false,
     "needs_confirmation": true,
-    "forbidden_actions": ["delete", "purchase", "login", "send_personal_data"]
+    "forbidden_actions": [
+      "delete",
+      "purchase",
+      "login",
+      "send_personal_data",
+      "change_permissions",
+      "external_submit",
+      "git_remote",
+      "read_secrets",
+      "run_commands",
+      "read_local_files",
+      "network_write"
+    ]
   }
 }
 ```
+
+共有AIは、少なくとも `safety.can_execute=false` を持つことを基本条件にします。
+実操作が必要な場合も、AI定義ではなく executor 側に分離し、人間確認と監査ログを通します。
 
 ## 共有サイトに必要な項目
 

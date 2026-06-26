@@ -4,9 +4,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
+from .audit_log import SafetyAuditLog
 from .micro_ai import MicroAgentRunner
 from .performance import get_active_profile
-from .safety_policy import ActionSafetyPolicy
+from .safety_policy import ActionSafetyPolicy, AgentPermissionGate
 from .session_store import SessionStore
 
 
@@ -28,11 +29,18 @@ class WorkSession:
 class WorkSessionManager:
     """Resident conductor: wake one specialist chat AI, receive a handoff, then close it."""
 
-    def __init__(self, runner: MicroAgentRunner | None = None, store: SessionStore | None = None) -> None:
+    def __init__(
+        self,
+        runner: MicroAgentRunner | None = None,
+        store: SessionStore | None = None,
+        audit_log: SafetyAuditLog | None = None,
+    ) -> None:
         self.runner = runner or MicroAgentRunner()
         self.store = store or SessionStore()
+        self.audit_log = audit_log or SafetyAuditLog()
         self.profile = get_active_profile()
         self.safety_policy = ActionSafetyPolicy()
+        self.permission_gate = AgentPermissionGate(self.safety_policy)
 
     def start(self, title: str, available_agents: list[str]) -> WorkSession:
         flow_path = self.store.create(title)
@@ -74,6 +82,12 @@ class WorkSessionManager:
     def talk_once(self, session: WorkSession, user_message: str) -> str:
         self.store.append(session.flow_path, "user_message", {"text": user_message})
         safety = self.safety_policy.review_text(user_message)
+        self.audit_log.record(
+            scope="user_input",
+            decision=safety,
+            text=user_message,
+            session_path=session.flow_path,
+        )
         self.store.append(
             session.flow_path,
             "safety_decision",
@@ -87,6 +101,30 @@ class WorkSessionManager:
         if not safety.allowed:
             return f"[safety]\n{safety.reason}\nrisks: {', '.join(safety.risks)}"
         agent_name = self.choose_agent(session, user_message)
+        agent = self.runner.load(agent_name)
+        agent_definition_safety = self.permission_gate.review_agent_definition(agent.name, agent.safety)
+        self.audit_log.record(
+            scope="agent_definition",
+            decision=agent_definition_safety,
+            text=agent.name,
+            agent_name=agent.name,
+            session_path=session.flow_path,
+            extra={"safety": agent.safety or {}},
+        )
+        self.store.append(
+            session.flow_path,
+            "agent_definition_safety",
+            {
+                "agent_name": agent.name,
+                "allowed": agent_definition_safety.allowed,
+                "requires_review": agent_definition_safety.requires_review,
+                "reason": agent_definition_safety.reason,
+                "risks": list(agent_definition_safety.risks),
+            },
+        )
+        if not agent_definition_safety.allowed:
+            session.active_agent = None
+            return f"[safety]\n{agent_definition_safety.reason}\nrisks: {', '.join(agent_definition_safety.risks)}"
         handoffs = self.store.read_handoffs(session.flow_path)
         self.store.append(session.flow_path, "agent_selected", {"agent_name": agent_name})
         payload = {
@@ -95,11 +133,36 @@ class WorkSessionManager:
             "user_message": user_message,
         }
         answer = self.runner.run_text(agent_name, payload)
+        output_safety = self.permission_gate.review_agent_output(agent.name, agent.safety, answer)
+        self.audit_log.record(
+            scope="agent_output",
+            decision=output_safety,
+            text=answer,
+            agent_name=agent.name,
+            session_path=session.flow_path,
+        )
+        self.store.append(
+            session.flow_path,
+            "agent_output_safety",
+            {
+                "agent_name": agent.name,
+                "allowed": output_safety.allowed,
+                "requires_review": output_safety.requires_review,
+                "reason": output_safety.reason,
+                "risks": list(output_safety.risks),
+            },
+        )
+        if not output_safety.allowed:
+            session.active_agent = None
+            return f"[safety]\n{output_safety.reason}\nrisks: {', '.join(output_safety.risks)}"
         self.store.append(session.flow_path, "agent_answer", {"agent_name": agent_name, "answer": answer})
         handoff = self._summarize_and_close(session, agent_name, user_message, answer)
         self.store.append_dataclass(session.flow_path, "handoff", handoff)
         session.active_agent = None
-        return f"[{agent_name}]\n{answer}\n\n[handoff]\n{handoff.summary}"
+        review_note = ""
+        if output_safety.requires_review:
+            review_note = f"\n\n[safety-review]\n{output_safety.reason}\nrisks: {', '.join(output_safety.risks)}"
+        return f"[{agent_name}]\n{answer}{review_note}\n\n[handoff]\n{handoff.summary}"
 
     def _summarize_and_close(self, session: WorkSession, agent_name: str, user_message: str, answer: str) -> AgentHandoff:
         if len(answer) <= 500:

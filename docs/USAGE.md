@@ -28,8 +28,17 @@ python launch_light_ai.py
 4. 整理案を確認する
 5. 「確認して実行」を押す
 
+ファイル本文と隠しファイルは読みません。AI案は executor が対象フォルダ内の安全な相対パスだけに検査してから表示します。
+
 ## 基板設計セッション
 
 「基板設計したい」「KiCadで設計したい」などと入力すると、基板設計セッションを開始します。
 
 セッション中は、入力に応じて `kicad_operator`、`document_summarizer`、`vscode_operator` などの専門AIを必要な時だけ起動します。
+
+## 安全ログ
+
+安全判定は `runtime/security/safety_audit.sqlite3` に保存します。
+全文ではなく、判定結果、リスク分類、SHA-256、短い伏字プレビューだけを残します。
+
+詳しくは `docs/SECURITY.md` を見てください。
