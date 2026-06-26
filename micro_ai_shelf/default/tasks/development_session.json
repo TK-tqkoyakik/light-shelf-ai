@@ -1,0 +1,7 @@
+{
+  "id": "development_session",
+  "label": "開発支援セッション",
+  "mode": "session",
+  "keywords": ["開発", "実装", "コード", "github", "git", "commit", "push", "テスト", "エラー", "debug", "ui", "windows", "極小AI"],
+  "pipeline": ["conductor_router", "vscode_operator", "github_operator", "git_reviewer", "test_planner", "error_diagnoser", "app_ui_designer", "windows_operator", "agent_creator", "handoff_summarizer"]
+}

@@ -56,12 +56,54 @@ class LightweightAITests(unittest.TestCase):
         self.assertEqual(runner.load("file_sort_reviewer").name, "file_sort_reviewer")
         self.assertEqual(runner.load("conductor_router").role, "resident_conductor")
         self.assertEqual(runner.load("kicad_operator").role, "specialist_chat")
+        for agent_name in [
+            "web_researcher",
+            "web_operator",
+            "browser_safety_reviewer",
+            "github_operator",
+            "git_reviewer",
+            "app_ui_designer",
+            "windows_operator",
+            "test_planner",
+            "error_diagnoser",
+            "agent_creator",
+        ]:
+            self.assertEqual(runner.load(agent_name).name, agent_name)
+        self.assertEqual(runner.load("browser_safety_reviewer").role, "reviewer")
 
     def test_agent_shelf_search_finds_specialists_from_files(self) -> None:
         runner = MicroAgentRunner()
         self.assertEqual(runner.find_agents("KiCadで基板配線したい")[0].name, "kicad_operator")
         self.assertEqual(runner.find_agents("READMEをまとめたい")[0].name, "document_summarizer")
         self.assertEqual(runner.find_agents("VSCodeでデバッグしたい")[0].name, "vscode_operator")
+        self.assertEqual(runner.find_agents("Webで調べたい")[0].name, "web_researcher")
+        self.assertEqual(runner.find_agents("ブラウザを操作したい")[0].name, "web_operator")
+        self.assertEqual(runner.find_agents("GitHubに投稿したい")[0].name, "github_operator")
+        self.assertEqual(runner.find_agents("エラーを見て")[0].name, "error_diagnoser")
+        self.assertEqual(runner.find_agents("新しい極小AIを作りたい")[0].name, "agent_creator")
+
+    def test_new_task_routes_exist(self) -> None:
+        web_route = TaskRouter().route("Webで調べてブラウザ操作したい")
+        self.assertIsNotNone(web_route)
+        assert web_route is not None
+        self.assertEqual(web_route.task_id, "web_assist_session")
+        self.assertIn("web_researcher", web_route.pipeline)
+        self.assertIn("web_operator", web_route.pipeline)
+        self.assertIn("browser_safety_reviewer", web_route.pipeline)
+
+        dev_route = TaskRouter().route("GitHubに投稿してテストとエラーも見たい")
+        self.assertIsNotNone(dev_route)
+        assert dev_route is not None
+        self.assertEqual(dev_route.task_id, "development_session")
+        self.assertIn("github_operator", dev_route.pipeline)
+        self.assertIn("git_reviewer", dev_route.pipeline)
+        self.assertIn("test_planner", dev_route.pipeline)
+        self.assertIn("error_diagnoser", dev_route.pipeline)
+
+    def test_browser_safety_reviewer_has_fixed_json_output(self) -> None:
+        reviewer = MicroAgentRunner().load("browser_safety_reviewer")
+        self.assertIn("approved", reviewer.output)
+        self.assertIn("reason", reviewer.output)
 
     def test_session_can_be_started_without_waking_llm(self) -> None:
         route = TaskRouter().route("基板設計したい")

@@ -22,17 +22,29 @@ try {
 
     $python = Get-Command python -ErrorAction SilentlyContinue
     if ($python) {
+        if ($SelfCheck) {
+            & $python.Source "launch_light_ai.py" "--check"
+            exit $LASTEXITCODE
+        }
         $pythonArgs = @("launch_light_ai.py")
-        if ($SelfCheck) { $pythonArgs += "--check" }
-        & $python.Source @pythonArgs 2>&1 | Tee-Object -FilePath $LogPath -Append
+        & $python.Source @pythonArgs 2>&1 | ForEach-Object {
+            Write-LaunchLog $_
+            Write-Output $_
+        }
         exit $LASTEXITCODE
     }
 
     $py = Get-Command py -ErrorAction SilentlyContinue
     if ($py) {
+        if ($SelfCheck) {
+            & $py.Source "-3" "launch_light_ai.py" "--check"
+            exit $LASTEXITCODE
+        }
         $pythonArgs = @("-3", "launch_light_ai.py")
-        if ($SelfCheck) { $pythonArgs += "--check" }
-        & $py.Source @pythonArgs 2>&1 | Tee-Object -FilePath $LogPath -Append
+        & $py.Source @pythonArgs 2>&1 | ForEach-Object {
+            Write-LaunchLog $_
+            Write-Output $_
+        }
         exit $LASTEXITCODE
     }
 

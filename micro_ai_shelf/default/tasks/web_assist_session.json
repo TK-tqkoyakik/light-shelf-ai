@@ -1,0 +1,7 @@
+{
+  "id": "web_assist_session",
+  "label": "Web支援セッション",
+  "mode": "session",
+  "keywords": ["web", "ブラウザ", "検索", "調べ", "サイト", "ページ", "クリック", "フォーム", "url", "出典"],
+  "pipeline": ["conductor_router", "web_researcher", "web_operator", "browser_safety_reviewer", "document_summarizer", "handoff_summarizer"]
+}
