@@ -1,3 +1,3 @@
 @echo off
 cd /d "%~dp0"
-python launch_light_ai.py
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\start-light-ai.ps1"

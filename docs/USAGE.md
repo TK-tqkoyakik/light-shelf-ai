@@ -8,6 +8,8 @@ python launch_light_ai.py
 
 または Windows では `launch_light_ai.bat` をダブルクリックします。
 
+デスクトップショートカットは `scripts/start-light-ai.ps1` を呼びます。起動に失敗した場合は `runtime/logs/launcher.log` を確認してください。
+
 起動時にロード画面が出て、`micro_ai_shelf/default/agents`、`micro_ai_shelf/default/tasks`、セッション保存先を確認します。
 
 ## オーバーレイ操作

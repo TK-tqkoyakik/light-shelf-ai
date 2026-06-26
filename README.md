@@ -47,7 +47,7 @@ python launch_light_ai.py
 
 起動時にはロード画面が出て、`agents/`、`tasks/`、セッション保存先を確認してから本画面を開きます。
 
-Windowsでは `launch_light_ai.bat` からも起動できます。
+Windowsでは `launch_light_ai.bat` からも起動できます。内部では `scripts/start-light-ai.ps1` がPythonを探し、起動ログを `runtime/logs/launcher.log` に保存します。
 
 ## 軽量プロファイル
 
@@ -85,6 +85,7 @@ runtime/                     セッションDBなど実行時ファイル
 
 ## オーバーレイ表示
 
+- ダーク/ネオン調の近未来UIにしています。
 - 起動時は最前面表示です。
 - 「最前面」のチェックで前面固定を切り替えできます。
 - 「全画面」または `F11` で全画面にできます。

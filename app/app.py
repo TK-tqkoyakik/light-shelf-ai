@@ -3,6 +3,7 @@ from __future__ import annotations
 import queue
 import threading
 import tkinter as tk
+from tkinter import font as tkfont
 from pathlib import Path
 from tkinter import filedialog, messagebox, scrolledtext
 
@@ -14,19 +15,32 @@ from .session_manager import WorkSession, WorkSessionManager
 from .session_store import SessionStore
 
 
+BG = "#07111f"
+PANEL = "#0d1b2f"
+PANEL_2 = "#10243d"
+CYAN = "#43f5ff"
+BLUE = "#6aa8ff"
+PINK = "#ff4fd8"
+TEXT = "#e8f6ff"
+MUTED = "#8aa3b8"
+OK = "#53ff9f"
+WARN = "#ffd166"
+
+
 class MiniTaskAIApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
-        self.root.title("軽量ファイル整理AI")
-        self.root.geometry("520x560")
-        self.root.minsize(420, 420)
+        self.root.title("Light Shelf AI")
+        self.root.geometry("720x680")
+        self.root.minsize(520, 460)
+        self.root.configure(bg=BG)
         self.root.attributes("-topmost", True)
 
         self.selected_folder: Path | None = None
         self.current_plan = None
         self.is_compact = False
         self.is_fullscreen = False
-        self.normal_geometry = "520x560"
+        self.normal_geometry = "720x680"
         self.ai = FileOrganizerAI()
         self.router = TaskRouter()
         self.session_manager = WorkSessionManager()
@@ -39,52 +53,123 @@ class MiniTaskAIApp:
         self._poll_messages()
 
     def _build_ui(self) -> None:
-        overlay_row = tk.Frame(self.root, padx=8, pady=(8, 0))
-        overlay_row.pack(fill=tk.X)
+        self.font_title = tkfont.Font(family="Yu Gothic UI", size=15, weight="bold")
+        self.font_ui = tkfont.Font(family="Yu Gothic UI", size=10)
+        self.font_small = tkfont.Font(family="Yu Gothic UI", size=9)
+        self.font_mono = tkfont.Font(family="Cascadia Mono", size=10)
+
+        shell = tk.Frame(self.root, bg=BG, padx=14, pady=14)
+        shell.pack(fill=tk.BOTH, expand=True)
+        self.shell = shell
+
+        header = tk.Frame(shell, bg=BG)
+        header.pack(fill=tk.X, pady=(0, 12))
+
+        title_block = tk.Frame(header, bg=BG)
+        title_block.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        tk.Label(title_block, text="LIGHT SHELF AI", fg=CYAN, bg=BG, font=self.font_title).pack(anchor="w")
+        tk.Label(title_block, text="micro agents on demand / local overlay", fg=MUTED, bg=BG, font=self.font_small).pack(anchor="w")
+
+        overlay_row = tk.Frame(header, bg=BG)
+        overlay_row.pack(side=tk.RIGHT)
 
         self.pin_var = tk.BooleanVar(value=True)
-        tk.Checkbutton(overlay_row, text="最前面", variable=self.pin_var, command=self.toggle_topmost).pack(side=tk.LEFT)
-        tk.Button(overlay_row, text="全画面", command=self.toggle_fullscreen).pack(side=tk.LEFT, padx=(6, 0))
-        tk.Button(overlay_row, text="− 小さく", command=self.toggle_compact).pack(side=tk.LEFT, padx=(6, 0))
+        tk.Checkbutton(
+            overlay_row,
+            text="PIN",
+            variable=self.pin_var,
+            command=self.toggle_topmost,
+            bg=BG,
+            fg=TEXT,
+            selectcolor=PANEL,
+            activebackground=BG,
+            activeforeground=CYAN,
+            font=self.font_small,
+        ).pack(side=tk.LEFT, padx=(0, 6))
+        self._button(overlay_row, "FULL", self.toggle_fullscreen).pack(side=tk.LEFT, padx=(0, 6))
+        self._button(overlay_row, "− MINI", self.toggle_compact).pack(side=tk.LEFT)
 
-        top = tk.Frame(self.root, padx=8, pady=8)
+        top = self._card(shell)
         self.top_frame = top
-        top.pack(fill=tk.X)
+        top.pack(fill=tk.X, pady=(0, 10))
 
-        self.folder_label = tk.Label(top, text="フォルダ未選択", anchor="w")
-        self.folder_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        self.folder_label = tk.Label(top, text="フォルダ未選択", anchor="w", fg=MUTED, bg=PANEL, font=self.font_ui)
+        self.folder_label.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=12, pady=12)
 
-        tk.Button(top, text="フォルダ選択", command=self.choose_folder).pack(side=tk.RIGHT)
+        self._button(top, "フォルダ選択", self.choose_folder, accent=True).pack(side=tk.RIGHT, padx=10, pady=10)
 
-        self.chat = scrolledtext.ScrolledText(self.root, height=20, wrap=tk.WORD, state=tk.DISABLED)
+        self.chat = scrolledtext.ScrolledText(
+            shell,
+            height=20,
+            wrap=tk.WORD,
+            state=tk.DISABLED,
+            bg="#050b14",
+            fg=TEXT,
+            insertbackground=CYAN,
+            selectbackground="#173b64",
+            relief=tk.FLAT,
+            borderwidth=0,
+            font=self.font_mono,
+            padx=14,
+            pady=14,
+        )
         self.chat_widget = self.chat
-        self.chat.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
+        self.chat.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
 
-        input_row = tk.Frame(self.root, padx=8)
+        input_row = self._card(shell)
         self.input_frame = input_row
-        input_row.pack(fill=tk.X)
+        input_row.pack(fill=tk.X, pady=(0, 10))
 
         self.input_var = tk.StringVar()
-        entry = tk.Entry(input_row, textvariable=self.input_var)
-        entry.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        entry = tk.Entry(
+            input_row,
+            textvariable=self.input_var,
+            bg="#081321",
+            fg=TEXT,
+            insertbackground=CYAN,
+            relief=tk.FLAT,
+            font=self.font_ui,
+        )
+        entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=12, pady=12, ipady=7)
         entry.bind("<Return>", lambda _event: self.send())
 
-        tk.Button(input_row, text="送信", command=self.send).pack(side=tk.RIGHT, padx=(6, 0))
+        self._button(input_row, "SEND", self.send, accent=True).pack(side=tk.RIGHT, padx=(0, 12), pady=12)
 
-        action_row = tk.Frame(self.root, padx=8, pady=8)
+        action_row = tk.Frame(shell, bg=BG)
         self.action_frame = action_row
         action_row.pack(fill=tk.X)
 
-        self.apply_button = tk.Button(action_row, text="確認して実行", command=self.apply_plan, state=tk.DISABLED)
+        self.apply_button = self._button(action_row, "確認して実行", self.apply_plan, accent=True)
+        self.apply_button.config(state=tk.DISABLED)
         self.apply_button.pack(side=tk.LEFT)
 
-        tk.Button(action_row, text="取り消し", command=self.undo_last).pack(side=tk.LEFT, padx=(6, 0))
+        self._button(action_row, "取り消し", self.undo_last).pack(side=tk.LEFT, padx=(8, 0))
 
-        self.status_var = tk.StringVar(value="待機中（LLM未起動）")
-        tk.Label(action_row, textvariable=self.status_var, anchor="e").pack(side=tk.RIGHT)
+        self.status_var = tk.StringVar(value="待機中 / LLM offline")
+        tk.Label(action_row, textvariable=self.status_var, anchor="e", fg=OK, bg=BG, font=self.font_small).pack(side=tk.RIGHT)
 
         self.root.bind("<F11>", lambda _event: self.toggle_fullscreen())
         self.root.bind("<Escape>", lambda _event: self.exit_fullscreen())
+
+    def _card(self, parent: tk.Widget) -> tk.Frame:
+        return tk.Frame(parent, bg=PANEL, highlightbackground="#1e78a8", highlightthickness=1, bd=0)
+
+    def _button(self, parent: tk.Widget, text: str, command: callable, accent: bool = False) -> tk.Button:
+        return tk.Button(
+            parent,
+            text=text,
+            command=command,
+            bg=CYAN if accent else PANEL_2,
+            fg="#001018" if accent else TEXT,
+            activebackground=PINK if accent else "#173b64",
+            activeforeground="#001018" if accent else CYAN,
+            relief=tk.FLAT,
+            borderwidth=0,
+            padx=14,
+            pady=8,
+            font=self.font_small,
+            cursor="hand2",
+        )
 
     def toggle_topmost(self) -> None:
         self.root.attributes("-topmost", bool(self.pin_var.get()))
@@ -115,8 +200,8 @@ class MiniTaskAIApp:
         if self.is_compact:
             self.normal_geometry = self.root.geometry()
             self._hide_for_compact()
-            self.root.geometry("360x92")
-            self.root.minsize(260, 80)
+            self.root.geometry("430x108")
+            self.root.minsize(320, 90)
             self.status_var.set("ミニ表示")
         else:
             self._show_full_ui()
@@ -130,9 +215,9 @@ class MiniTaskAIApp:
         self.action_frame.pack_forget()
 
     def _show_full_ui(self) -> None:
-        self.top_frame.pack(fill=tk.X)
-        self.chat_widget.pack(fill=tk.BOTH, expand=True, padx=8, pady=(0, 8))
-        self.input_frame.pack(fill=tk.X)
+        self.top_frame.pack(fill=tk.X, pady=(0, 10))
+        self.chat_widget.pack(fill=tk.BOTH, expand=True, pady=(0, 10))
+        self.input_frame.pack(fill=tk.X, pady=(0, 10))
         self.action_frame.pack(fill=tk.X)
 
     def choose_folder(self) -> None:
@@ -248,7 +333,8 @@ class MiniTaskAIApp:
 
     def _write(self, sender: str, text: str) -> None:
         self.chat.config(state=tk.NORMAL)
-        self.chat.insert(tk.END, f"{sender}: {text}\n\n")
+        label = "USER" if sender == "あなた" else sender
+        self.chat.insert(tk.END, f"╭─ {label}\n{text}\n╰────────────────────────\n\n")
         self.chat.see(tk.END)
         self.chat.config(state=tk.DISABLED)
 
@@ -256,21 +342,22 @@ class MiniTaskAIApp:
 class LoadingScreen:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
-        self.root.title("軽量AI 起動中")
-        self.root.geometry("420x220")
+        self.root.title("Light Shelf AI 起動中")
+        self.root.geometry("500x300")
         self.root.resizable(False, False)
+        self.root.configure(bg=BG)
         self.root.attributes("-topmost", True)
 
-        frame = tk.Frame(root, padx=18, pady=18)
+        frame = tk.Frame(root, padx=22, pady=22, bg=BG)
         frame.pack(fill=tk.BOTH, expand=True)
 
-        tk.Label(frame, text="軽量AIを起動しています", font=("Yu Gothic UI", 14, "bold")).pack(anchor="w")
-        tk.Label(frame, text="必要なファイルとAI棚を確認中…").pack(anchor="w", pady=(6, 12))
+        tk.Label(frame, text="LIGHT SHELF AI", fg=CYAN, bg=BG, font=("Yu Gothic UI", 17, "bold")).pack(anchor="w")
+        tk.Label(frame, text="boot sequence / checking local agent shelf", fg=MUTED, bg=BG, font=("Yu Gothic UI", 9)).pack(anchor="w", pady=(2, 16))
 
         self.status = tk.StringVar(value="準備中")
-        tk.Label(frame, textvariable=self.status, anchor="w").pack(fill=tk.X)
+        tk.Label(frame, textvariable=self.status, anchor="w", fg=OK, bg=BG, font=("Yu Gothic UI", 10, "bold")).pack(fill=tk.X)
 
-        self.log = tk.Listbox(frame, height=5)
+        self.log = tk.Listbox(frame, height=7, bg="#050b14", fg=TEXT, selectbackground="#173b64", relief=tk.FLAT, borderwidth=0, font=("Cascadia Mono", 9))
         self.log.pack(fill=tk.BOTH, expand=True, pady=(8, 0))
 
         self.steps: list[tuple[str, callable]] = [
@@ -339,8 +426,31 @@ class LoadingScreen:
         return str(store.session_dir)
 
 
+def run_startup_self_check() -> None:
+    checks: list[tuple[str, callable]] = [
+        ("agents", lambda: MicroAgentRunner().list_agents()),
+        ("tasks", lambda: TaskRouter().tasks),
+        ("session_store", lambda: SessionStore().session_dir.mkdir(exist_ok=True)),
+    ]
+    for label, check in checks:
+        result = check()
+        if isinstance(result, list) and not result:
+            raise RuntimeError(f"{label} check failed: empty")
+        print(f"OK: {label}")
+
+
 def main() -> None:
+    try:
+        from ctypes import windll
+
+        windll.shcore.SetProcessDpiAwareness(1)
+    except Exception:
+        pass
     root = tk.Tk()
+    try:
+        root.tk.call("tk", "scaling", 1.35)
+    except Exception:
+        pass
     LoadingScreen(root)
     root.mainloop()
 

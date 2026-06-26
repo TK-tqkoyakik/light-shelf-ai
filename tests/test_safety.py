@@ -90,6 +90,8 @@ class LightweightAITests(unittest.TestCase):
         self.assertIn("toggle_topmost", source)
         self.assertIn("toggle_fullscreen", source)
         self.assertIn("toggle_compact", source)
+        self.assertIn("LIGHT SHELF AI", source)
+        self.assertIn("#43f5ff", source)
 
     def test_app_source_has_loading_screen(self) -> None:
         source = Path(__file__).resolve().parent.parent.joinpath("app", "app.py").read_text(encoding="utf-8")
@@ -102,6 +104,12 @@ class LightweightAITests(unittest.TestCase):
         self.assertIn("laptop", PROFILES)
         self.assertIn("balanced", PROFILES)
         self.assertEqual(PROFILES["tiny"].model, "qwen2.5:0.5b")
+
+    def test_windows_launcher_exists(self) -> None:
+        root = Path(__file__).resolve().parent.parent
+        self.assertTrue(root.joinpath("scripts", "start-light-ai.ps1").exists())
+        self.assertIn("start-light-ai.ps1", root.joinpath("launch_light_ai.bat").read_text(encoding="utf-8"))
+        self.assertIn("--check", root.joinpath("launch_light_ai.py").read_text(encoding="utf-8"))
 
     def test_rejects_outside_path_and_delete_like_shapes(self) -> None:
         root = self.make_case_dir("outside_path")
