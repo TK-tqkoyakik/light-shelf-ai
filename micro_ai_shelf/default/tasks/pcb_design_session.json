@@ -1,0 +1,7 @@
+{
+  "id": "pcb_design_session",
+  "label": "基板設計セッション",
+  "mode": "session",
+  "keywords": ["基板", "pcb", "kicad", "回路", "設計", "フットプリント", "配線", "vscode", "仕様書", "文書"],
+  "pipeline": ["conductor_router", "kicad_operator", "document_summarizer", "vscode_operator", "handoff_summarizer"]
+}

@@ -1,0 +1,6 @@
+{
+  "id": "file_organize",
+  "label": "ファイル整理",
+  "keywords": ["ファイル", "整理", "片付", "分類", "まとめ", "フォルダ", "リネーム", "移動"],
+  "pipeline": ["file_sort_planner", "file_sort_reviewer"]
+}
