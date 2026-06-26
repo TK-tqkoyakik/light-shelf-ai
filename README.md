@@ -80,6 +80,7 @@ runtime/                     セッションDBなど実行時ファイル
 - [使い方](docs/USAGE.md)
 - [極小AIパック仕様](docs/AGENT_PACKAGE.md)
 - [共有サイト・GitHub配布案](docs/SHARING_PLAN.md)
+- [GitHub投稿手順](docs/GITHUB_PUBLISH.md)
 - [今後の予定](docs/ROADMAP.md)
 
 ## オーバーレイ表示
