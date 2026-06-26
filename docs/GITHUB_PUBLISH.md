@@ -30,6 +30,12 @@ git remote add origin https://github.com/YOUR_NAME/light-shelf-ai.git
 git push -u origin main
 ```
 
+または、このリポジトリに含まれる補助スクリプトを使います。
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\publish-github.ps1 -RemoteUrl https://github.com/YOUR_NAME/light-shelf-ai.git
+```
+
 ## 投稿内容
 
 - `app/`: アプリ本体
@@ -42,3 +48,5 @@ git push -u origin main
 ```powershell
 python -B -m unittest discover -s tests -v
 ```
+
+GitHubに投稿後は `.github/workflows/ci.yml` により、push と pull request で同じテストが走ります。
