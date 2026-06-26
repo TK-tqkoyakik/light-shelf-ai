@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from .ollama_client import OllamaClient
 from .performance import get_active_profile
@@ -21,6 +22,7 @@ class MicroAgent:
     role: str = ""
     description: str = ""
     tags: tuple[str, ...] = ()
+    safety: dict[str, Any] | None = None
 
 
 class MicroAgentRunner:
@@ -55,7 +57,16 @@ class MicroAgentRunner:
             role=str(data.get("role", "")),
             description=str(data.get("description", "")),
             tags=tuple(str(tag) for tag in data.get("tags", [])),
+            safety=dict(data.get("safety", self._default_safety(data))),
         )
+
+    def _default_safety(self, data: dict) -> dict[str, Any]:
+        role = str(data.get("role", ""))
+        return {
+            "can_execute": False,
+            "needs_confirmation": role in ("reviewer", "specialist_chat"),
+            "forbidden_actions": ["delete", "purchase", "login", "send_personal_data", "change_permissions"],
+        }
 
     def list_agents(self, role: str | None = None) -> list[MicroAgent]:
         agents: list[MicroAgent] = []

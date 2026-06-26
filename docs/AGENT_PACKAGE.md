@@ -15,7 +15,8 @@
   "output": "短い専門チャット返答",
   "safety": {
     "can_execute": false,
-    "needs_confirmation": true
+    "needs_confirmation": true,
+    "forbidden_actions": ["delete", "purchase", "login", "send_personal_data"]
   }
 }
 ```

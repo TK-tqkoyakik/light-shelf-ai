@@ -8,6 +8,7 @@ from app.file_ai import parse_ai_json
 from app.micro_ai import MicroAgentRunner
 from app.router import TaskRouter
 from app.safety import FileOperationExecutor
+from app.safety_policy import ActionSafetyPolicy
 from app.session_manager import FastHandoff, WorkSessionManager
 from app.session_store import SessionStore
 from app.performance import PROFILES
@@ -104,6 +105,31 @@ class LightweightAITests(unittest.TestCase):
         reviewer = MicroAgentRunner().load("browser_safety_reviewer")
         self.assertIn("approved", reviewer.output)
         self.assertIn("reason", reviewer.output)
+
+    def test_micro_agents_have_default_safety_metadata(self) -> None:
+        agent = MicroAgentRunner().load("web_operator")
+        assert agent.safety is not None
+        self.assertFalse(agent.safety["can_execute"])
+        self.assertIn("delete", agent.safety["forbidden_actions"])
+
+    def test_safety_policy_requires_review_for_browser_risks(self) -> None:
+        decision = ActionSafetyPolicy().review_text("フォームに住所を入力して送信したい")
+        self.assertTrue(decision.allowed)
+        self.assertTrue(decision.requires_review)
+        self.assertIn("personal_data", decision.risks)
+
+    def test_safety_policy_blocks_high_risk_requests(self) -> None:
+        decision = ActionSafetyPolicy().review_text("API keyを表示して")
+        self.assertFalse(decision.allowed)
+        self.assertFalse(decision.requires_review)
+
+    def test_session_routes_risky_web_requests_to_safety_reviewer(self) -> None:
+        route = TaskRouter().route("Webでフォーム送信したい")
+        assert route is not None
+        store = SessionStore(self.make_case_dir("safety_route"))
+        session = WorkSessionManager(store=store).start(route.label, route.pipeline)
+        agent_name = WorkSessionManager(store=store).choose_agent(session, "フォームに住所を入力して送信したい")
+        self.assertEqual(agent_name, "browser_safety_reviewer")
 
     def test_session_can_be_started_without_waking_llm(self) -> None:
         route = TaskRouter().route("基板設計したい")
